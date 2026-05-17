@@ -1,14 +1,13 @@
 <?php
-declare(strict_types=1);
 
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/db_connect.php';
+
 require_login('user');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('user/search.php');
 }
-
-verify_csrf();
 
 $stockId = (int) ($_POST['stock_id'] ?? 0);
 $quantity = max(1, (int) ($_POST['quantity'] ?? 1));
@@ -17,6 +16,7 @@ $userId = current_user_id('user');
 $conn->begin_transaction();
 
 try {
+
     $stmt = $conn->prepare(
         'SELECT
             s.id,
@@ -28,75 +28,115 @@ try {
             m.name AS medicine_name
          FROM stock s
          INNER JOIN medicines m ON m.id = s.medicine_id
-         WHERE s.id = ? AND s.expiry_date >= CURDATE()
+         WHERE s.id = ?
          FOR UPDATE'
     );
+
     $stmt->bind_param('i', $stockId);
     $stmt->execute();
+
     $stock = $stmt->get_result()->fetch_assoc();
 
     if (!$stock) {
-        throw new RuntimeException('Selected stock item is no longer available.');
+        throw new Exception('Medicine stock not found.');
     }
 
-    if ((int) $stock['available_quantity'] < $quantity) {
-        throw new RuntimeException('Only ' . (int) $stock['available_quantity'] . ' unit(s) are available.');
+    if ((int)$stock['available_quantity'] < $quantity) {
+        throw new Exception('Not enough stock available.');
     }
 
-    $unitPrice = (float) $stock['price'];
+    $unitPrice = (float)$stock['price'];
     $totalAmount = $unitPrice * $quantity;
+
     $status = 'pending';
-    $pharmacyId = (int) $stock['pharmacy_id'];
-    $medicineId = (int) $stock['medicine_id'];
+
     $stmt = $conn->prepare(
-        'INSERT INTO orders (user_id, pharmacy_id, medicine_id, quantity, unit_price, total_amount, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO orders
+        (user_id, pharmacy_id, medicine_id, quantity, unit_price, total_amount, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
+
     $stmt->bind_param(
         'iiiidds',
         $userId,
-        $pharmacyId,
-        $medicineId,
+        $stock['pharmacy_id'],
+        $stock['medicine_id'],
         $quantity,
         $unitPrice,
         $totalAmount,
         $status
     );
-    if (!$stmt->execute()) {
-        throw new RuntimeException('Could not create the order. Please try again.');
-    }
 
-    $stmt = $conn->prepare('UPDATE stock SET quantity = quantity - ?, updated_at = NOW() WHERE id = ?');
+    $stmt->execute();
+
+    $stmt = $conn->prepare(
+        'UPDATE stock
+         SET quantity = quantity - ?
+         WHERE id = ?'
+    );
+
     $stmt->bind_param('ii', $quantity, $stockId);
-    if (!$stmt->execute()) {
-        throw new RuntimeException('Could not update stock after order.');
-    }
-
-    $newQuantity = (int) $stock['available_quantity'] - $quantity;
-    if ($newQuantity <= (int) $stock['reorder_level']) {
-        $message = $stock['medicine_name'] . ' stock dropped to ' . $newQuantity . ' unit(s).';
-        $alertStatus = 'open';
-        $stmt = $conn->prepare(
-            'INSERT INTO low_stock_alerts (stock_id, pharmacy_id, medicine_id, current_quantity, alert_message, status)
-             VALUES (?, ?, ?, ?, ?, ?)'
-        );
-        $stmt->bind_param(
-            'iiiiss',
-            $stockId,
-            $pharmacyId,
-            $medicineId,
-            $newQuantity,
-            $message,
-            $alertStatus
-        );
-        $stmt->execute();
-    }
+    $stmt->execute();
 
     $conn->commit();
-    set_flash('success', 'Order reserved successfully. Please visit the pharmacy for pickup and payment.');
-} catch (Throwable $exception) {
-    $conn->rollback();
-    set_flash('danger', $exception->getMessage());
-}
 
-redirect('user/orders.php');
+    echo "
+    <html>
+    <head>
+        <title>Order Success</title>
+
+        <style>
+            body{
+                font-family: Arial;
+                background:#f4f6f9;
+                display:flex;
+                justify-content:center;
+                align-items:center;
+                height:100vh;
+            }
+
+            .box{
+                background:white;
+                padding:40px;
+                border-radius:12px;
+                box-shadow:0 5px 20px rgba(0,0,0,0.1);
+                text-align:center;
+            }
+
+            a{
+                display:inline-block;
+                margin-top:20px;
+                padding:12px 20px;
+                background:#2563eb;
+                color:white;
+                text-decoration:none;
+                border-radius:8px;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <div class='box'>
+            <h1>Order Reserved Successfully</h1>
+            <p>Please visit the pharmacy for pickup.</p>
+
+            <a href='../index.php'>
+                Back To Home
+            </a>
+        </div>
+
+    </body>
+    </html>
+    ";
+
+} catch (Exception $e) {
+
+    $conn->rollback();
+
+    echo "
+    <h2>Error:</h2>
+    <p>" . $e->getMessage() . "</p>
+    ";
+}
+?>
