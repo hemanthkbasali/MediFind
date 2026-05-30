@@ -149,23 +149,23 @@
                 <ul class="navbar-nav">
 
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Home</a>
+                        <a class="nav-link" href="index.php">Home</a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Search</a>
+                        <a class="nav-link" href="user/search.php">Search</a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" href="#">User Login</a>
+                        <a class="nav-link" href="user/login.php">User Login</a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Pharmacy Login</a>
+                        <a class="nav-link" href="pharmacy/login.php">Pharmacy Login</a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Admin</a>
+                        <a class="nav-link" href="admin/login.php">Admin</a>
                     </li>
 
                 </ul>
@@ -334,9 +334,9 @@
                             Search medicine availability, compare nearby pharmacy stock, check prices and place reservation orders instantly.
                         </p>
 
-                        <button class="btn btn-outline-primary mini-btn mt-3">
-                            Create user account
-                        </button>
+                        <a href="user/register.php" class="btn btn-outline-primary mini-btn mt-3">
+                             Create user account
+                        </a>
 
                     </div>
 
@@ -353,9 +353,9 @@
                             Maintain medicine inventory, update stock availability, manage pricing, expiry tracking and low-stock alerts.
                         </p>
 
-                        <button class="btn btn-outline-primary mini-btn mt-3">
-                            Pharmacy login
-                        </button>
+                        <a href="pharmacy/login.php" class="btn btn-outline-primary mini-btn mt-3">
+                           Pharmacy login
+                        </a>
 
                     </div>
 
@@ -372,10 +372,9 @@
                             Manage pharmacies, medicines, users, reports, inventory analytics and complete platform operations.
                         </p>
 
-                        <button class="btn btn-outline-primary mini-btn mt-3">
-                            Admin login
-                        </button>
-
+                        <a href="admin/login.php" class="btn btn-outline-primary mini-btn mt-3">
+                         Admin login
+                        </a>
                     </div>
 
                 </div>
